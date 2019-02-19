@@ -1,1 +1,0 @@
-Prikshet@DESKTOP-LPSME37.localdomain.18
