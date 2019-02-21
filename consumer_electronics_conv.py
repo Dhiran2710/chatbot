@@ -51,14 +51,15 @@ def parse_function(filename, label):
     return resized_image, label
 
 
-def train_preprocess(image, label):
+def train_preprocess(MP2_Feb08_182303_0Not available0
+                     image, label):
     image = tf.image.random_flip_left_right(image)
     image = tf.image.random_brightness(image, max_delta=32.0 / 255.0)
     image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
     image = tf.clip_by_value(image, 0.0, 0.1)   
     return image, label
 
-rootdir = './downloads/'
+rootdir = './data/train/'
 
 labels = []
 labelCtr = 0
