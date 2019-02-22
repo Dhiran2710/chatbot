@@ -213,27 +213,27 @@ Optimization function, which is modified to include a weight decay after every 8
 Evaluation metric
 """
 
-epochs = 25
-initial_lrate = 0.01
+# epochs = 25
+# initial_lrate = 0.01
 
-def decay(epoch, steps=100):
-    initial_lrate = 0.01
-    drop = 0.96
-    epochs_drop = 8
-    lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
-    return lrate
+# def decay(epoch, steps=100):
+#     initial_lrate = 0.01
+#     drop = 0.96
+#     epochs_drop = 8
+#     lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
+#     return lrate
 
-sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
+# sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
 
-lr_sc = LearningRateScheduler(decay, verbose=1)
+# lr_sc = LearningRateScheduler(decay, verbose=1)
 
-model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
+# model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
 
-"""
-Our model is now ready! Test it out to check how it works.
-"""
+# """
+# Our model is now ready! Test it out to check how it works.
+# """
 
-history = model.fit(X_train, [y_train, y_train, y_train], validation_data=(X_test, [y_test, y_test, y_test]), epochs=epochs, batch_size=256, callbacks=[lr_sc])
+# history = model.fit(X_train, [y_train, y_train, y_train], validation_data=(X_test, [y_test, y_test, y_test]), epochs=epochs, batch_size=256, callbacks=[lr_sc])
 
 """
 Our model gave an impressive 80%+ accuracy on the validation set, which proves that this model architecture is truly worth checking out!
@@ -244,7 +244,3 @@ This was a really enjoyable article to write and I hope you found it equally use
 
 In the next couple of articles, I will focus on the advancements in Inception architectures. These advancements were detailed in later papers, namely Inception v2, Inception v3, etc. And yes, they are as intriguing as the name suggests, so stay tuned!
 """
-
-
-	
-
