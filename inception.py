@@ -27,14 +27,15 @@ We will then load the dataset and perform some preprocessing steps. This is a cr
 num_classes = 10
 
 def load_cifar10_data(img_rows, img_cols):
+    print("loading data")
 
     # Load cifar10 training and validation sets
     (X_train, Y_train), (X_valid, Y_valid) = cifar10.load_data()
-
+    print("resizing images")
     # Resize training images
     X_train = np.array([cv2.resize(img, (img_rows,img_cols)) for img in X_train[:,:,:,:]])
     X_valid = np.array([cv2.resize(img, (img_rows,img_cols)) for img in X_valid[:,:,:,:]])
-
+    print("keras compatibility transfer")
     # Transform targets to keras compatible format
     Y_train = np_utils.to_categorical(Y_train, num_classes)
     Y_valid = np_utils.to_categorical(Y_valid, num_classes)
