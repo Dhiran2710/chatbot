@@ -1,0 +1,11 @@
+To run on windows machine:
+
+
+Set PYTHONPATH and Path in environment variables as the location of file python.exe
+Set ./Scripts/pip3.exe location as Path environment variable 
+pip3 install tensorflow --user
+Download git. 
+Download notepad++
+git clone https://github.com/Dhiran2710/chatbot
+pip3 install keras --user
+pip3 install opencv-python --user
