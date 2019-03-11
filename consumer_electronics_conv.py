@@ -51,8 +51,7 @@ def parse_function(filename, label):
     return resized_image, label
 
 
-def train_preprocess(MP2_Feb08_182303_0Not available0
-                     image, label):
+def train_preprocess(image, label):
     image = tf.image.random_flip_left_right(image)
     image = tf.image.random_brightness(image, max_delta=32.0 / 255.0)
     image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
@@ -133,7 +132,7 @@ with tf.variable_scope("Softmax"):
     y_pred_cls = tf.argmax(y_pred, dimension=1)
 #Use Cross entropy cost function
 with tf.name_scope("cross_ent"):
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2, labels=y_true)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logitsv2(logits=layer_fc2, labels=y_true)
     cost = tf.reduce_mean(cross_entropy)
 
 #Use Adam Optimizer
@@ -174,6 +173,7 @@ with tf.Session() as sess:
             # Put the batch into a dict with the proper names for placeholder variables
             print('batch #', batch)
             print('y_true_batch len', len(y_true_batch))
+
             y_true_batch = np.reshape(y_true_batch, (-1, 10))
             
             # x_batch = np.reshape(x_batch, 4096)

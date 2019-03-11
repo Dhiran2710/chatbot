@@ -1,3 +1,4 @@
+import os, sys, time
 import keras
 from keras.layers.core import Layer
 import keras.backend as K
@@ -20,42 +21,69 @@ import math
 from keras.optimizers import SGD 
 from keras.callbacks import LearningRateScheduler
 
-"""
-We will then load the dataset and perform some preprocessing steps. This is a critical task before the deep learning model is trained.
-"""
+num_epochs = 10
+batch_size = 10
 
-num_classes = 10
+def load_filenames_and_labels(rootdir):
+    size = 0
+    filenames = []
+    labels = []
+    labelCtr = 0
+    currLabelStr = ''
+    for subdir, dirs, files in os.walk(rootdir):
+        for file in files:
+            imgPath = os.path.join(subdir, file)
+            path = os.path.dirname(imgPath)
+            labelStr = os.path.basename(path)
+            if not currLabelStr == labelStr:
+                labelCtr += 1
+                currLabelStr = labelStr 
+            filenames.append(imgPath)
+            labels.append(labelCtr)
+            size += 1
+    return filenames, labels, size
 
-def load_cifar10_data(img_rows, img_cols):
-    print("loading data")
+def preprocess_image(image, label):
+    image = tf.image.random_flip_left_right(image)
+    image = tf.image.random_brightness(image, max_delta=32.0 / 255.0)
+    image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    image = tf.clip_by_value(image, 0.0, 0.1)   
+    return image, label
 
-    # Load cifar10 training and validation sets
-    (X_train, Y_train), (X_valid, Y_valid) = cifar10.load_data()
-    print(X_train.shape)
-    print("resizing training images")
-    # Resize training images
-    X_train = np.array([cv2.resize(img, (img_rows,img_cols)) for img in X_train[0:100,:,:,:]])
-    print("resizing validation images")
-    X_valid = np.array([cv2.resize(img, (img_rows,img_cols)) for img in X_valid[0:100,:,:,:]])
-    print("keras compatibility transfer")
-    # Transform targets to keras compatible format
-    Y_train = np_utils.to_categorical(Y_train, num_classes)
-    Y_valid = np_utils.to_categorical(Y_valid, num_classes)
+def parse_function(filename, label):   
+    print('FILENAME', filename)
+    image_string = tf.read_file(filename)
+    image = tf.image.decode_jpeg(image_string, channels=3)
+    image = tf.image.convert_image_dtype(image, tf.float32)
+    resized_image = tf.image.resize_images(image, [64, 64])
+    return resized_image, label
     
-    X_train = X_train.astype('float32')
-    X_valid = X_valid.astype('float32')
+def load_data(root_dir):
+    files, labels, size =  load_filenames_and_labels(root_dir)
+    print('# of files', len(files))
+    print('loading data from', root_dir)
+    # print('filenames', files)
+    # print('labels', labels)
+    # Create training dataset
+    dataset = tf.data.Dataset.from_tensor_slices((files, labels))
+    dataset = dataset.shuffle(len(files))
+    dataset = dataset.map(parse_function, num_parallel_calls=4)
+    dataset = dataset.map(preprocess_image, num_parallel_calls=4)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(1)
+    print(dataset.output_types)
+    print(dataset.output_shapes)
+    print('dataset from', root_dir, 'loaded')
+    return dataset, size
 
-    # preprocess data
-    X_train = X_train / 255.0
-    X_valid = X_valid / 255.0
+train_dir = './data/train/'
+test_dir = './data/test/'
 
-    return X_train, Y_train, X_valid, Y_valid
-	
-X_train, y_train, X_test, y_test = load_cifar10_data(224, 224)
+train_dataset, train_dataset_size = load_data(train_dir)
+test_dataset, test_dataset_size = load_data(test_dir)
 
-"""
-Now, we will define our deep learning architecture. We will quickly define a function to do this, which, when given the necessary information, gives us back the entire inception layer.
-"""
+# Inception NN Model modules 
+
 def inception_module(x,
                      filters_1x1,
                      filters_3x3_reduce,
@@ -80,9 +108,9 @@ def inception_module(x,
     
     return output
 	
-""" 
-We will then create the GoogLeNet architecture, as mentioned in the paper.
-"""
+ 
+# Create the GoogleNet 
+
 kernel_init = keras.initializers.glorot_uniform()
 bias_init = keras.initializers.Constant(value=0.2)
 
@@ -203,47 +231,87 @@ x = Dense(10, activation='softmax', name='output')(x)
 
 model = Model(input_layer, [x, x1, x2], name='inception_v1')
 
-""" 
-Let us summarize our model to check if our work so far has gone well.
-"""
-model.summary()
+# model.summary()
 
-"""
-The model looks fine, as you can gauge from the above output. We can add a few finishing touches before we train our model. We will define the following:
-Loss function for each output layer
-Weightage assigned to that output layer
-Optimization function, which is modified to include a weight decay after every 8 epochs
-Evaluation metric
-"""
 
-# epochs = 25
-# initial_lrate = 0.01
+# Loss function for each output layer
+# Weight assigned to that output layer
+# Optimization function with weight decay after every 8 epochs
+# Evaluation metric
 
-# def decay(epoch, steps=100):
-#     initial_lrate = 0.01
-#     drop = 0.96
-#     epochs_drop = 8
-#     lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
-#     return lrate
+epochs = 25
+initial_lrate = 0.01
 
-# sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
+def decay(epoch, steps=100):
+    initial_lrate = 0.01
+    drop = 0.96
+    epochs_drop = 8
+    lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
+    return lrate
 
-# lr_sc = LearningRateScheduler(decay, verbose=1)
+sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
+
+lr_sc = LearningRateScheduler(decay, verbose=1)
+
+
+
+#Placeholder variable for the input images
+x = tf.placeholder(tf.float32, shape=[None, 64*64], name='X')
+print('x shape', tf.shape(x))
+# Reshape it into [num_images, img_height, img_width, num_channels]
+x_image = tf.reshape(x, [batch_size, 64, 64, 3])
+# Placeholder variable for the true labels associated with the images
+y_true = tf.placeholder(tf.int32, shape=[None, 10], name='y_true')
+y_true_cls = tf.argmax(y_true, dimension=1)
+
+
 
 # model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
+# Use Softmax function to normalize the output
+with tf.variable_scope("Softmax"):
+    y_pred = tf.nn.softmax(x)
+    y_pred_cls = tf.argmax(y_pred, dimension=1)
+# Cross entropy cost function 
+with tf.variable_scope('cross_ent'):
+    cross_ent = tf.nn.softmax_cross_entropy_with_logits(logits=x, labels=y_true)
+    cross_ent = tf.reduce_mean(cross_ent)
+    
+# Optimizer     
+with tf.variable_scope('optimizer'):
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cross_ent)
 
-# """
-# Our model is now ready! Test it out to check how it works.
-# """
+# Accuracy
+with tf.name_scope("accuracy"):
+    correct_prediction = tf.equal(y_pred_cls, y_true_cls)
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-# history = model.fit(X_train, [y_train, y_train, y_train], validation_data=(X_test, [y_test, y_test, y_test]), epochs=epochs, batch_size=256, callbacks=[lr_sc])
+print('TRAINABLE VARIALBLES', tf.trainable_variables())
+sys.exit()
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for epoch in range(num_epochs):
+        iterator = train_dataset.make_one_shot_iterator()
+        next_element = iterator.get_next()
+        start_time = time.time()
+        train_accuracy = 0
+        num_batches = int(train_dataset_size/batch_size)
+        for batch in range(num_batches):
+            x_batch, y_true_batch = sess.run(next_element)
+            print('batch #', batch)
+            print('y_true_batch len', len(y_true_batch))
+            y_true_batch = np.reshape(y_true_batch, (-1, 10))
+            feed_dict_train = {x_image: x_batch, y_true: y_true_batch}
+            # Run optimizer using this batch of training data
+            _, c = sess.run([optimizer, cross_ent], feed_dict=feed_dict_train)
+            # Compute average loss
+            avg_cost += c / num_batches
+            # Calculate the accuracy on the batch of training data
+            train_accurary += sess.run(accuracy, feed_dict=feed_dict_train)
 
-"""
-Our model gave an impressive 80%+ accuracy on the validation set, which proves that this model architecture is truly worth checking out!
-"""
-"""
-End Notes
-This was a really enjoyable article to write and I hope you found it equally useful. Inception v1 was the focal point on this article, wherein I explained the nitty gritty of what this framework is about and demonstrated how to implement it from scratch in Keras.
+            # summary = sess.run(merged_summary, feed_dict=feed_dict_train)
+        train_accuracy /= int(len(labels)/batch_size)
 
-In the next couple of articles, I will focus on the advancements in Inception architectures. These advancements were detailed in later papers, namely Inception v2, Inception v3, etc. And yes, they are as intriguing as the name suggests, so stay tuned!
-"""
+        end_time = time.time()
+        print("Epoch "+str(epoch+1)+" completed : Time usage "+str(int(end_time-start_time))+" seconds")
+        print("\tAccuracy:")
+        print ("\t- Training Accuracy:\t{}".format(train_accuracy))

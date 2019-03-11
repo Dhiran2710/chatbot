@@ -1,0 +1,4 @@
+Todo
+
+Incorporate the new data in the neural net.
+	    Fix the bug ValueError: No gradients provided for any variable. https://github.com/tensorflow/tensorflow/issues/1511 
