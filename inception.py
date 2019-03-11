@@ -12,7 +12,8 @@ from keras.layers import Conv2D, MaxPool2D,  \
     Flatten
 
 import cv2 
-import numpy as np 
+import numpy as np
+import matplotlib.image as mpimg
 from keras.datasets import cifar10 
 from keras import backend as K 
 from keras.utils import np_utils
@@ -41,7 +42,8 @@ def load_filenames_and_labels(rootdir):
             filenames.append(imgPath)
             labels.append(labelCtr)
             size += 1
-    return filenames, labels, size
+    num_labels = labelCtr + 1
+    return filenames, labels, num_labels
 
 def preprocess_image(image, label):
     image = tf.image.random_flip_left_right(image)
@@ -59,28 +61,27 @@ def parse_function(filename, label):
     return resized_image, label
     
 def load_data(root_dir):
-    files, labels, size =  load_filenames_and_labels(root_dir)
+    files, labels, num_labels =  load_filenames_and_labels(root_dir)
     print('# of files', len(files))
     print('loading data from', root_dir)
-    # print('filenames', files)
-    # print('labels', labels)
-    # Create training dataset
-    dataset = tf.data.Dataset.from_tensor_slices((files, labels))
-    dataset = dataset.shuffle(len(files))
-    dataset = dataset.map(parse_function, num_parallel_calls=4)
-    dataset = dataset.map(preprocess_image, num_parallel_calls=4)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(1)
-    print(dataset.output_types)
-    print(dataset.output_shapes)
-    print('dataset from', root_dir, 'loaded')
-    return dataset, size
+    img_data = np.zeros(shape=(len(files), 100, 100, 3))
+    num_wrong_shape = 0
+    for i in range(len(files)):
+        data = mpimg.imread(files[i])
+        if(data.shape == (100, 100, 3)):
+            img_data[i] = mpimg.imread(files[i])
+        else:
+            # print(files[i]) <--- for printing the images that do not have shape (100, 100, 3) which we do not include in the training/testing data. 
+            num_wrong_shape += 1
+    print('WARNING:', num_wrong_shape, 'IMAGES NOT INCLUDED DUE TO INCORRECT SHAPE')
+    labels = np_utils.to_categorical(labels, num_labels)
+    return img_data, labels
 
 train_dir = './data/train/'
 test_dir = './data/test/'
 
-train_dataset, train_dataset_size = load_data(train_dir)
-test_dataset, test_dataset_size = load_data(test_dir)
+train_images, train_labels = load_data(train_dir)
+test_images, test_labels = load_data(test_dir)
 
 # Inception NN Model modules 
 
@@ -109,12 +110,12 @@ def inception_module(x,
     return output
 	
  
-# Create the GoogleNet 
+# Create the GoogLeNet 
 
 kernel_init = keras.initializers.glorot_uniform()
 bias_init = keras.initializers.Constant(value=0.2)
 
-input_layer = Input(shape=(224, 224, 3))
+input_layer = Input(shape=(100, 100, 3)) 
 
 x = Conv2D(64, (7, 7), padding='same', strides=(2, 2), activation='relu', name='conv_1_7x7/2', kernel_initializer=kernel_init, bias_initializer=bias_init)(input_layer)
 x = MaxPool2D((3, 3), padding='same', strides=(2, 2), name='max_pool_1_3x3/2')(x)
@@ -157,7 +158,7 @@ x1 = Conv2D(128, (1, 1), padding='same', activation='relu')(x1)
 x1 = Flatten()(x1)
 x1 = Dense(1024, activation='relu')(x1)
 x1 = Dropout(0.7)(x1)
-x1 = Dense(10, activation='softmax', name='auxilliary_output_1')(x1)
+x1 = Dense(7, activation='softmax', name='auxilliary_output_1')(x1)
 
 x = inception_module(x,
                      filters_1x1=160,
@@ -192,7 +193,7 @@ x2 = Conv2D(128, (1, 1), padding='same', activation='relu')(x2)
 x2 = Flatten()(x2)
 x2 = Dense(1024, activation='relu')(x2)
 x2 = Dropout(0.7)(x2)
-x2 = Dense(10, activation='softmax', name='auxilliary_output_2')(x2)
+x2 = Dense(7, activation='softmax', name='auxilliary_output_2')(x2)
 
 x = inception_module(x,
                      filters_1x1=256,
@@ -227,7 +228,7 @@ x = GlobalAveragePooling2D(name='avg_pool_5_3x3/1')(x)
 
 x = Dropout(0.4)(x)
 
-x = Dense(10, activation='softmax', name='output')(x)
+x = Dense(7, activation='softmax', name='output')(x)
 
 model = Model(input_layer, [x, x1, x2], name='inception_v1')
 
@@ -255,63 +256,54 @@ lr_sc = LearningRateScheduler(decay, verbose=1)
 
 
 
-#Placeholder variable for the input images
-x = tf.placeholder(tf.float32, shape=[None, 64*64], name='X')
-print('x shape', tf.shape(x))
-# Reshape it into [num_images, img_height, img_width, num_channels]
-x_image = tf.reshape(x, [batch_size, 64, 64, 3])
-# Placeholder variable for the true labels associated with the images
-y_true = tf.placeholder(tf.int32, shape=[None, 10], name='y_true')
-y_true_cls = tf.argmax(y_true, dimension=1)
+model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
 
-
-
-# model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
+history = model.fit(train_images, [train_labels, train_labels, train_labels], validation_data=([test_images, [test_labels, test_labels, test_labels]]), epochs=num_epochs, batch_size=batch_size, callbacks=[lr_sc])
 # Use Softmax function to normalize the output
-with tf.variable_scope("Softmax"):
-    y_pred = tf.nn.softmax(x)
-    y_pred_cls = tf.argmax(y_pred, dimension=1)
+# with tf.variable_scope("Softmax"):
+#     y_pred = tf.nn.softmax(x)
+#     y_pred_cls = tf.argmax(y_pred, dimension=1)
 # Cross entropy cost function 
-with tf.variable_scope('cross_ent'):
-    cross_ent = tf.nn.softmax_cross_entropy_with_logits(logits=x, labels=y_true)
-    cross_ent = tf.reduce_mean(cross_ent)
+# with tf.variable_scope('cross_ent'):
+#     cross_ent = tf.nn.softmax_cross_entropy_with_logits(logits=x, labels=y_true)
+#     cross_ent = tf.reduce_mean(cross_ent)
     
 # Optimizer     
-with tf.variable_scope('optimizer'):
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cross_ent)
+# with tf.variable_scope('optimizer'):
+#     optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cross_ent)
 
 # Accuracy
-with tf.name_scope("accuracy"):
-    correct_prediction = tf.equal(y_pred_cls, y_true_cls)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+# with tf.name_scope("accuracy"):
+#     correct_prediction = tf.equal(y_pred_cls, y_true_cls)
+#     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-print('TRAINABLE VARIALBLES', tf.trainable_variables())
-sys.exit()
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    for epoch in range(num_epochs):
-        iterator = train_dataset.make_one_shot_iterator()
-        next_element = iterator.get_next()
-        start_time = time.time()
-        train_accuracy = 0
-        num_batches = int(train_dataset_size/batch_size)
-        for batch in range(num_batches):
-            x_batch, y_true_batch = sess.run(next_element)
-            print('batch #', batch)
-            print('y_true_batch len', len(y_true_batch))
-            y_true_batch = np.reshape(y_true_batch, (-1, 10))
-            feed_dict_train = {x_image: x_batch, y_true: y_true_batch}
-            # Run optimizer using this batch of training data
-            _, c = sess.run([optimizer, cross_ent], feed_dict=feed_dict_train)
-            # Compute average loss
-            avg_cost += c / num_batches
-            # Calculate the accuracy on the batch of training data
-            train_accurary += sess.run(accuracy, feed_dict=feed_dict_train)
+# print('TRAINABLE VARIALBLES', tf.trainable_variables())
+# sys.exit()
+# with tf.Session() as sess:
+#     sess.run(tf.global_variables_initializer())
+#     for epoch in range(num_epochs):
+#         iterator = train_dataset.make_one_shot_iterator()
+#         next_element = iterator.get_next()
+#         start_time = time.time()
+#         train_accuracy = 0
+#         num_batches = int(train_dataset_size/batch_size)
+#         for batch in range(num_batches):
+#             x_batch, y_true_batch = sess.run(next_element)
+#             print('batch #', batch)
+#             print('y_true_batch len', len(y_true_batch))
+#             y_true_batch = np.reshape(y_true_batch, (-1, 10))
+#             feed_dict_train = {x_image: x_batch, y_true: y_true_batch}
+#             # Run optimizer using this batch of training data
+#             _, c = sess.run([optimizer, cross_ent], feed_dict=feed_dict_train)
+#             # Compute average loss
+#             avg_cost += c / num_batches
+#             # Calculate the accuracy on the batch of training data
+#             train_accurary += sess.run(accuracy, feed_dict=feed_dict_train)
 
-            # summary = sess.run(merged_summary, feed_dict=feed_dict_train)
-        train_accuracy /= int(len(labels)/batch_size)
+#             # summary = sess.run(merged_summary, feed_dict=feed_dict_train)
+#         train_accuracy /= int(len(labels)/batch_size)
 
-        end_time = time.time()
-        print("Epoch "+str(epoch+1)+" completed : Time usage "+str(int(end_time-start_time))+" seconds")
-        print("\tAccuracy:")
-        print ("\t- Training Accuracy:\t{}".format(train_accuracy))
+#         end_time = time.time()
+#         print("Epoch "+str(epoch+1)+" completed : Time usage "+str(int(end_time-start_time))+" seconds")
+#         print("\tAccuracy:")
+#         print ("\t- Training Accuracy:\t{}".format(train_accuracy))
