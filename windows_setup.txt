@@ -1,11 +1,14 @@
 To run on windows machine:
 
-
+Download latest version of python 3.6 64 bit
 Set PYTHONPATH and Path in environment variables as the location of file python.exe
 Set ./Scripts/pip3.exe location as Path environment variable 
 pip3 install tensorflow --user
 Download git. 
+Set the git environment variable. 
 Download notepad++
 git clone https://github.com/Dhiran2710/chatbot
 pip3 install keras --user
 pip3 install opencv-python --user
+pip3 install matplotlib --user
+Download data folder from skype.
