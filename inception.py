@@ -1,9 +1,4 @@
-import os, sys, time
 import keras
-from keras.layers.core import Layer
-import keras.backend as K
-import tensorflow as tf
-from keras.datasets import cifar10
 
 from keras.models import Model
 from keras.layers import Conv2D, MaxPool2D,  \
@@ -11,72 +6,16 @@ from keras.layers import Conv2D, MaxPool2D,  \
     GlobalAveragePooling2D, AveragePooling2D,\
     Flatten
 
-import cv2 
-import numpy as np
-import matplotlib.image as mpimg
-from keras.datasets import cifar10 
-from keras import backend as K 
-from keras.utils import np_utils
 
 import math 
 from keras.optimizers import SGD 
 from keras.callbacks import LearningRateScheduler
 
-num_epochs = 10
+from img_to_data import load_data
+
+
+num_epochs = 1
 batch_size = 10
-
-def load_filenames_and_labels(rootdir):
-    size = 0
-    filenames = []
-    labels = []
-    labelCtr = 0
-    currLabelStr = ''
-    for subdir, dirs, files in os.walk(rootdir):
-        for file in files:
-            imgPath = os.path.join(subdir, file)
-            path = os.path.dirname(imgPath)
-            labelStr = os.path.basename(path)
-            if not currLabelStr == labelStr:
-                labelCtr += 1
-                currLabelStr = labelStr 
-            filenames.append(imgPath)
-            labels.append(labelCtr)
-            size += 1
-    num_labels = labelCtr + 1
-    return filenames, labels, num_labels
-
-def preprocess_image(image, label):
-    image = tf.image.random_flip_left_right(image)
-    image = tf.image.random_brightness(image, max_delta=32.0 / 255.0)
-    image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-    image = tf.clip_by_value(image, 0.0, 0.1)   
-    return image, label
-
-def parse_function(filename, label):   
-    print('FILENAME', filename)
-    image_string = tf.read_file(filename)
-    image = tf.image.decode_jpeg(image_string, channels=3)
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    resized_image = tf.image.resize_images(image, [64, 64])
-    return resized_image, label
-    
-def load_data(root_dir):
-    files, labels, num_labels =  load_filenames_and_labels(root_dir)
-    print('# of files', len(files))
-    print('loading data from', root_dir)
-    img_data = np.zeros(shape=(len(files), 100, 100, 3))
-    num_wrong_shape = 0
-    for i in range(len(files)):
-        data = mpimg.imread(files[i])
-        if(data.shape == (100, 100, 3)):
-            img_data[i] = mpimg.imread(files[i])
-        else:
-            # print(files[i]) <--- for printing the images that do not have shape (100, 100, 3) which we do not include in the training/testing data. 
-            num_wrong_shape += 1
-    print('WARNING:', num_wrong_shape, 'IMAGES NOT INCLUDED DUE TO INCORRECT SHAPE')
-    labels = np_utils.to_categorical(labels, num_labels)
-    return img_data, labels
-
 train_dir = './data/train/'
 test_dir = './data/test/'
 
@@ -240,7 +179,6 @@ model = Model(input_layer, [x, x1, x2], name='inception_v1')
 # Optimization function with weight decay after every 8 epochs
 # Evaluation metric
 
-epochs = 25
 initial_lrate = 0.01
 
 def decay(epoch, steps=100):
@@ -259,6 +197,21 @@ lr_sc = LearningRateScheduler(decay, verbose=1)
 model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
 
 history = model.fit(train_images, [train_labels, train_labels, train_labels], validation_data=([test_images, [test_labels, test_labels, test_labels]]), epochs=num_epochs, batch_size=batch_size, callbacks=[lr_sc])
+
+# serialize model to json.
+model_json = model.to_json()
+with open('model.json', 'w') as json_file:
+    json_file.write(model_json)
+# serialize weights to HDF5
+model.save_weights('model.h5')
+print('Saved model to disk')
+
+
+
+
+
+
+
 # Use Softmax function to normalize the output
 # with tf.variable_scope("Softmax"):
 #     y_pred = tf.nn.softmax(x)
