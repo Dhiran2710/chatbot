@@ -1,5 +1,0 @@
-Todo
-
-Write code to save trained model
-Train with more epochs
-Improve accuracy
