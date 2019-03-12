@@ -173,14 +173,7 @@ model = Model(input_layer, [x, x1, x2], name='inception_v1')
 
 # model.summary()
 
-
-# Loss function for each output layer
-# Weight assigned to that output layer
-# Optimization function with weight decay after every 8 epochs
-# Evaluation metric
-
 initial_lrate = 0.01
-
 def decay(epoch, steps=100):
     initial_lrate = 0.01
     drop = 0.96

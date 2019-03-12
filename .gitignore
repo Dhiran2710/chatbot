@@ -3,3 +3,6 @@ downloads
 chromedriver.exe
 keywords.txt
 data
+*~
+*.swp
+*.swo
