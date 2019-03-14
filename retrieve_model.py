@@ -30,5 +30,6 @@ lr_sc = LearningRateScheduler(decay, verbose=1)
 
 # evaluate loaded model on test data
 loaded_model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
-score = loaded_model.evaluate(train_images, [train_labels, train_labels, train_labels], verbose=0)
-print('%s: %.2f%%' % (loaded_model.metrics_names[1], score[1] * 100))
+score = loaded_model.evaluate(test_images, [test_labels, test_labels, test_labels], verbose=0)
+for i in range(len(score)):
+    print(loaded_model.metrics_names[i], ':', score[i])

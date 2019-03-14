@@ -14,7 +14,7 @@ from keras.callbacks import LearningRateScheduler
 from img_to_data import load_data
 
 
-num_epochs = 1
+num_epochs = 10
 batch_size = 10
 train_dir = './data/train/'
 test_dir = './data/test/'
@@ -198,53 +198,3 @@ with open('model.json', 'w') as json_file:
 # serialize weights to HDF5
 model.save_weights('model.h5')
 print('Saved model to disk')
-
-
-# Use Softmax function to normalize the output
-# with tf.variable_scope("Softmax"):
-#     y_pred = tf.nn.softmax(x)
-#     y_pred_cls = tf.argmax(y_pred, dimension=1)
-# Cross entropy cost function 
-# with tf.variable_scope('cross_ent'):
-#     cross_ent = tf.nn.softmax_cross_entropy_with_logits(logits=x, labels=y_true)
-#     cross_ent = tf.reduce_mean(cross_ent)
-    
-# Optimizer     
-# with tf.variable_scope('optimizer'):
-#     optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cross_ent)
-
-# Accuracy
-# with tf.name_scope("accuracy"):
-#     correct_prediction = tf.equal(y_pred_cls, y_true_cls)
-#     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-# print('TRAINABLE VARIALBLES', tf.trainable_variables())
-# sys.exit()
-# with tf.Session() as sess:
-#     sess.run(tf.global_variables_initializer())
-#     for epoch in range(num_epochs):
-#         iterator = train_dataset.make_one_shot_iterator()
-#         next_element = iterator.get_next()
-#         start_time = time.time()
-#         train_accuracy = 0
-#         num_batches = int(train_dataset_size/batch_size)
-#         for batch in range(num_batches):
-#             x_batch, y_true_batch = sess.run(next_element)
-#             print('batch #', batch)
-#             print('y_true_batch len', len(y_true_batch))
-#             y_true_batch = np.reshape(y_true_batch, (-1, 10))
-#             feed_dict_train = {x_image: x_batch, y_true: y_true_batch}
-#             # Run optimizer using this batch of training data
-#             _, c = sess.run([optimizer, cross_ent], feed_dict=feed_dict_train)
-#             # Compute average loss
-#             avg_cost += c / num_batches
-#             # Calculate the accuracy on the batch of training data
-#             train_accurary += sess.run(accuracy, feed_dict=feed_dict_train)
-
-#             # summary = sess.run(merged_summary, feed_dict=feed_dict_train)
-#         train_accuracy /= int(len(labels)/batch_size)
-
-#         end_time = time.time()
-#         print("Epoch "+str(epoch+1)+" completed : Time usage "+str(int(end_time-start_time))+" seconds")
-#         print("\tAccuracy:")
-#         print ("\t- Training Accuracy:\t{}".format(train_accuracy))

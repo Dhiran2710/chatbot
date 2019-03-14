@@ -5,7 +5,6 @@
 - A model trained using `inception.py` is saved in the files `model.json` and `model.h5`, and can be retrieved using `retrieve_model.py`
 
 ## TODO
-- Debug `retrieve_model.py`
 - Train using `inception.py` with more epochs.
 - Improve accuracy of `inception.py` model. 
 
