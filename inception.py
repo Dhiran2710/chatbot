@@ -200,11 +200,6 @@ model.save_weights('model.h5')
 print('Saved model to disk')
 
 
-
-
-
-
-
 # Use Softmax function to normalize the output
 # with tf.variable_scope("Softmax"):
 #     y_pred = tf.nn.softmax(x)

@@ -25,7 +25,7 @@ def decay(epoch, steps=100):
     lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
     return lrate
 
-sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
+sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False, clipnorm=1.)
 lr_sc = LearningRateScheduler(decay, verbose=1)
 
 # evaluate loaded model on test data
