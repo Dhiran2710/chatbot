@@ -14,7 +14,7 @@ from keras.callbacks import LearningRateScheduler
 from img_to_data import load_data
 
 
-num_epochs = 10
+num_epochs = 75
 batch_size = 10
 train_dir = './data/train/'
 test_dir = './data/test/'
