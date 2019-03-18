@@ -15,6 +15,7 @@ from img_to_data import load_data
 
 
 num_epochs = 1
+
 batch_size = 10
 train_dir = './data/train/'
 test_dir = './data/test/'
