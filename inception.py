@@ -1,5 +1,5 @@
 import keras
-
+import keras.backend as K
 from keras.models import Model
 from keras.layers import Conv2D, MaxPool2D,  \
     Dropout, Dense, Input, concatenate,      \
@@ -14,7 +14,7 @@ from keras.callbacks import LearningRateScheduler
 from img_to_data import load_data
 
 
-num_epochs = 10
+num_epochs = 1
 batch_size = 10
 train_dir = './data/train/'
 test_dir = './data/test/'
@@ -174,6 +174,7 @@ model = Model(input_layer, [x, x1, x2], name='inception_v1')
 # model.summary()
 
 initial_lrate = 0.01
+
 def decay(epoch, steps=100):
     initial_lrate = 0.01
     drop = 0.96
@@ -183,11 +184,19 @@ def decay(epoch, steps=100):
 
 sgd = SGD(lr=initial_lrate, momentum=0.9, nesterov=False)
 
+adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 lr_sc = LearningRateScheduler(decay, verbose=1)
 
 
+# custom metric
+def mean_pred(y_true, y_pred):
+    return K.mean(y_pred)
 
-model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=sgd, metrics=['accuracy'])
+model.compile(loss=['categorical_crossentropy', 'categorical_crossentropy', 'categorical_crossentropy'], loss_weights=[1, 0.3, 0.3], optimizer=adam, metrics=['mae', 'acc', mean_pred])
+
+# Metrics measured
+#loss, output_loss, auxilliary_output_1_loss, auxilliary_output_2_loss, output_acc, auxilliary_output_1_acc, auxilliary_output_2_acc
+
 
 history = model.fit(train_images, [train_labels, train_labels, train_labels], validation_data=([test_images, [test_labels, test_labels, test_labels]]), epochs=num_epochs, batch_size=batch_size, callbacks=[lr_sc])
 
